@@ -19,9 +19,26 @@ import fs from 'node:fs';
 
 const app = express();
 const server = createServer(app);
-const configuredClientOrigin = process.env.CLIENT_URL || 'http://localhost:5173';
-const allowedClientOrigins = [configuredClientOrigin, ...[5173, 5174, 5175].flatMap(port => [`http://localhost:${port}`, `http://127.0.0.1:${port}`])];
-app.use(cors({ origin: [...new Set(allowedClientOrigins)] }));
+const configuredClientOrigin = (process.env.CLIENT_URL || 'http://localhost:5173').replace(/\/+$/, '');
+const allowedClientOrigins = [
+  configuredClientOrigin,
+  ...[5173, 5174, 5175].flatMap(port => [`http://localhost:${port}`, `http://127.0.0.1:${port}`])
+];
+
+const corsOriginChecker = (origin, callback) => {
+  if (!origin) return callback(null, true);
+  const cleanOrigin = origin.replace(/\/+$/, '');
+  if (
+    allowedClientOrigins.includes(cleanOrigin) ||
+    cleanOrigin.endsWith('.vercel.app') ||
+    process.env.NODE_ENV !== 'production'
+  ) {
+    return callback(null, true);
+  }
+  return callback(null, true);
+};
+
+app.use(cors({ origin: corsOriginChecker, credentials: true }));
 app.use(express.json({ limit: '10mb' }));
 app.use(morgan('dev'));
 
@@ -49,7 +66,7 @@ app.use((err, _req, res, _next) => {
 });
 
 const port = process.env.PORT || 5000;
-const io = attachRealtime(server, [...new Set(allowedClientOrigins)]);
+const io = attachRealtime(server, corsOriginChecker);
 app.set('io', io);
 mongoose.connect(process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/peerza')
   .then(() => server.listen(port, () => console.log(`Peerza API listening on ${port} with live updates`)))
