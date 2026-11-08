@@ -48,7 +48,48 @@ if (!fs.existsSync(uploadsDir)) {
 }
 app.use('/uploads', express.static(uploadsDir));
 
-app.get('/api/health', (_req, res) => res.json({ status: 'ok', service: 'Peerza API' }));
+function getHealthData() {
+  const isDbConnected = mongoose.connection.readyState === 1;
+  const dbStates = {
+    0: 'disconnected',
+    1: 'connected',
+    2: 'connecting',
+    3: 'disconnecting'
+  };
+
+  return {
+    status: isDbConnected ? 'ok' : 'degraded',
+    service: 'Peerza API',
+    uptime: Math.floor(process.uptime()),
+    timestamp: new Date().toISOString(),
+    database: {
+      status: dbStates[mongoose.connection.readyState] || 'unknown',
+      connected: isDbConnected
+    }
+  };
+}
+
+// Root and base API routes (prevent "Cannot GET /" and "Cannot GET /api")
+app.get('/', (_req, res) => {
+  res.json({
+    message: 'Peerza API is live and operational',
+    ...getHealthData(),
+    docs: '/api/health'
+  });
+});
+
+app.get('/api', (_req, res) => {
+  res.json({
+    message: 'Peerza API base route',
+    ...getHealthData()
+  });
+});
+
+app.get('/api/health', (_req, res) => {
+  const data = getHealthData();
+  const statusCode = data.database.connected ? 200 : 503;
+  res.status(statusCode).json(data);
+});
 app.use('/api/auth', authRoutes);
 app.use('/api', reviewRoutes);
 app.use('/api/profile', profileRoutes);
@@ -69,5 +110,5 @@ const port = process.env.PORT || 5000;
 const io = attachRealtime(server, corsOriginChecker);
 app.set('io', io);
 mongoose.connect(process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/peerza')
-  .then(() => server.listen(port, () => console.log(`Peerza API listening on ${port} with live updates`)))
+  .then(() => server.listen(port, '0.0.0.0', () => console.log(`Peerza API listening on port ${port} with live updates`)))
   .catch((error) => { console.error('MongoDB connection failed:', error.message); process.exit(1); });
