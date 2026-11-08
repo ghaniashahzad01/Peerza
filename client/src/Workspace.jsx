@@ -44,6 +44,11 @@ const userId = (user) => user?._id || user?.id || user;
 function Avatar({ user, onClick, style, className = '' }) {
   const [failed, setFailed] = useState(false);
   const src = !failed ? getAvatarUrl(user?.avatar) : null;
+
+  useEffect(() => {
+    setFailed(false);
+  }, [user?.avatar]);
+
   return (
     <span
       className={`work-avatar ${className}`}
