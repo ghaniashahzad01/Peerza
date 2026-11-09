@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeftRight, ArrowRight, Check, Compass, MessageCircle, Sparkles, Video } from 'lucide-react';
+import { ArrowLeftRight, ArrowRight, Check, Compass, Eye, EyeOff, MessageCircle, Sparkles, Video } from 'lucide-react';
 import api from './api';
 import { useAuth } from './AuthContext';
 
@@ -12,6 +12,7 @@ export default function AuthPage({ initialMode = 'login' }) {
   const isRegister = initialMode === 'register' || location.pathname === '/register';
   const [authError, setAuthError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // Form submit handler
   async function handleSubmit(e) {
@@ -151,13 +152,25 @@ export default function AuthPage({ initialMode = 'login' }) {
 
             <label>
               Password
-              <input
-                name="password"
-                type="password"
-                minLength="8"
-                placeholder="At least 8 characters"
-                required
-              />
+              <div className="password-input-wrap">
+                <input
+                  name="password"
+                  type={showPassword ? 'text' : 'password'}
+                  minLength="8"
+                  placeholder="At least 8 characters"
+                  required
+                />
+                <button
+                  type="button"
+                  className="password-toggle-btn"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  title={showPassword ? 'Hide password' : 'Show password'}
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </label>
 
             {authError && <div className="form-error">{authError}</div>}
@@ -170,7 +183,13 @@ export default function AuthPage({ initialMode = 'login' }) {
 
           <div className="auth-switch">
             {isRegister ? 'Already part of Peerza?' : 'New around here?'}{' '}
-            <Link to={isRegister ? '/login' : '/register'} onClick={() => setAuthError('')}>
+            <Link
+              to={isRegister ? '/login' : '/register'}
+              onClick={() => {
+                setAuthError('');
+                setShowPassword(false);
+              }}
+            >
               {isRegister ? 'Sign in' : 'Create an account'}
             </Link>
           </div>
